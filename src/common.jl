@@ -1,6 +1,6 @@
 module WebUtils
 
-export HTTPRequest, HTTPResponse
+export HTTPRequest, HTTPResponse, HTTPMethod, GET, POST
 
 
 @enum HTTPMethod::UInt8 GET POST
