@@ -1,6 +1,6 @@
 module WebRequests
 
-export request, clear, Result
+export request, clear, Result, GET, POST
 
 include("./common.jl")
 using .WebUtils: HTTPMethod, GET, POST

@@ -76,7 +76,6 @@ function runworker!(server::WebServer, id::Int)
         @sync for conn in server.connections
             addr, port = getpeername(conn)
             @debug "worker $id: get connection for $addr:$port"
-            println(typeof(conn))
             @async handlereq(conn, server.handler)
         end
     catch e
