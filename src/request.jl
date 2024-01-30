@@ -1,11 +1,25 @@
-module WebClients
+module WebRequests
 
-export request, clear
+export request, clear, Result
 
 include("./common.jl")
-using .WebUtils
+using .WebUtils: HTTPMethod, GET, POST
 using LibCURL
 
+
+struct Result
+    code::Int64
+    data::Union{Vector{UInt8}, Nothing}
+
+    function Result(status, data)
+        data = length(data) > 0 ? data : nothing
+        new(status, data)
+    end
+end
+
+mutable struct VectorWrapper
+    data::Vector{UInt8}
+end
 
 # Multi interface is not currently used
 function request(
@@ -13,9 +27,9 @@ function request(
     method::HTTPMethod=GET,
     payload::Union{AbstractString, Nothing}=nothing,
     readpost::Bool=false
-)
+)::Result
     curl = curl_easy_init()
-    output::Vector{UInt8} = []
+    output = VectorWrapper([])
 
     curl_easy_setopt(curl, CURLOPT_URL, url)
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1)
@@ -29,9 +43,12 @@ function request(
     end
 
     res = curl_easy_perform(curl)
+    code = Ref{Clong}(0)
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, code)
     curl_easy_cleanup(curl)
     res != CURLE_OK && error(curl_easy_strerror(res))
-    length(output) > 0 ? output : nothing
+
+    Result(code[], output.data)
 end
 
 function clear()
@@ -40,13 +57,12 @@ end
 
 function curl_write_cb(curlbuf::Ptr{Cvoid}, size::Csize_t, nmemb::Csize_t, outptr::Ptr{Cvoid})
     realsize = size * nmemb
-    outlen = unsafe_load(convert(Ptr{Int}, outptr+8))
-    outbegin = convert(Ptr{UInt8}, outptr + 40)
-
-    output = unsafe_wrap(Array, outbegin, outlen)
-    resize!(output, outlen+realsize)
+    w = unsafe_load(Ptr{VectorWrapper}(outptr))
+    prevlen = length(w.data)
+    resize!(w.data, prevlen+realsize)
     
-    ccall(:memcpy, Ptr{Cvoid}, (Ptr{Cvoid}, Ptr{Cvoid}, UInt64), outbegin+outlen, curlbuf, realsize)
+    ccall(:memcpy, Ptr{Cvoid}, (Ptr{Cvoid}, Ptr{Cvoid}, UInt64),
+                                pointer(w.data)+prevlen, curlbuf, realsize)
     realsize::Csize_t
 end
 
