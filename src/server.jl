@@ -44,7 +44,7 @@ function run!(server::WebServer)
         # изначально было вот так:
         # while true put!(connections, accept(server)) end
         # однако вследствие https://github.com/JuliaLang/julia/issues/45055
-        # graceful shutdown неработает, поэтому пришлось немного извернуться
+        # graceful shutdown не работает, поэтому пришлось немного извернуться
         # может иметь небольшой кост с точки зрения производительности,
         # так как постоянно тригерит планировщик
         @sync begin
